@@ -287,8 +287,11 @@ public unsafe static class PreCrafting
         if (job == CharacterInfo.JobID)
             return TaskResult.Done;
 
-        if (equipGearsetLoops > 0)
-            return TaskResult.Retry;
+        if (equipGearsetLoops >= 5)
+        {
+            DuoLog.Error("Unable to switch gearsets.");
+            return TaskResult.Abort;
+        }
 
         var gearsets = RaptureGearsetModule.Instance();
         foreach (ref var gs in gearsets->Entries)
