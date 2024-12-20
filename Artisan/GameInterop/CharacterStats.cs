@@ -10,8 +10,6 @@ using System.Runtime.CompilerServices;
 using Lumina.Excel.Sheets;
 using Artisan.RawInformation;
 using Lumina.Excel;
-using SharpDX.Direct2D1;
-using System.Linq;
 
 namespace Artisan.GameInterop;
 
@@ -31,7 +29,7 @@ public unsafe static class CharacterStatsUtils
             var row = sheet.GetRow(ParamIds[(int)stat])!;
             for (int i = 1; i < 23; ++i)
             {
-                res[i, (int)stat] = row.ReadInt32Column(i + 3);
+                res[i, (int)stat] = row.ReadInt16Column(i + 3);
             }
         }
         return res;

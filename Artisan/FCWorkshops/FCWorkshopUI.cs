@@ -406,7 +406,7 @@ namespace Artisan.FCWorkshops
                         var recipeID = LuminaSheets.RecipeSheet.Values.First(x => x.ItemResult.RowId == supplyItemID);
                         if (includePrecraft)
                         {
-                            Svc.Log.Debug($"I want to add {recipeID.ItemResult.Value.Name.ToString()} {timesToAdd} times");
+                            Svc.Log.Debug($"I want to add {recipeID.ItemResult.Value.Name.ToDalamudString().ToString()} {timesToAdd} times");
                             CraftingListUI.AddAllSubcrafts(recipeID, existingList, timesToAdd);
                         }
 

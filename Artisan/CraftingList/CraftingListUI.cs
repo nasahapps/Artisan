@@ -5,7 +5,6 @@ using Artisan.IPC;
 using Artisan.RawInformation;
 using Artisan.UI;
 using Dalamud.Interface.Colors;
-using Dalamud.Utility;
 using ECommons;
 using ECommons.DalamudServices;
 using ECommons.ExcelServices;
@@ -20,7 +19,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 
 namespace Artisan.CraftingLists
 {
@@ -116,7 +114,7 @@ namespace Artisan.CraftingLists
             {
                 try
                 {
-                    var clipboard = Clipboard.GetText();
+                    var clipboard = ImGui.GetClipboardText();
                     if (clipboard != string.Empty)
                     {
                         if (clipboard.TryParseJson<NewCraftingList>(out var import))
@@ -171,7 +169,7 @@ namespace Artisan.CraftingLists
             CraftingListFunctions.ListEndTime = GetListTimer(selectedList);
             Crafting.CraftFinished += UpdateListTimer;
             Processing = true;
-            Endurance.Enable = false;
+            Endurance.ToggleEndurance(false);
         }
 
         public static void UpdateListTimer(Recipe recipe, CraftState craft, StepState finalStep, bool cancelled)
@@ -298,7 +296,7 @@ namespace Artisan.CraftingLists
                 foreach (var ing in recipe.Value.Ingredients().Where(x => x.Amount > 0 && x.Item.RowId != 0))
                 {
                     var name = LuminaSheets.ItemSheet[ing.Item.RowId].Name.ToString();
-                    CraftingListHelpers.SelectedRecipesCraftable[ing.Item.RowId] = LuminaSheets.RecipeSheet!.Any(x => x.Value.ItemResult.Value.Name.ToString() == name);
+                    CraftingListHelpers.SelectedRecipesCraftable[ing.Item.RowId] = LuminaSheets.RecipeSheet!.Any(x => x.Value.ItemResult.Value.Name.ToDalamudString().ToString() == name);
 
                     for (int i = 1; i <= ing.Amount; i++)
                     {
@@ -410,7 +408,7 @@ namespace Artisan.CraftingLists
 
         public static Recipe? GetIngredientRecipe(string ingredient)
         {
-            return LuminaSheets.RecipeSheet.Values.Any(x => x.ItemResult.Value.Name.ToString() == ingredient) ? LuminaSheets.RecipeSheet.Values.First(x => x.ItemResult.Value.Name.ToString() == ingredient) : null;
+            return LuminaSheets.RecipeSheet.Values.Any(x => x.ItemResult.Value.Name.ToDalamudString().ToString() == ingredient) ? LuminaSheets.RecipeSheet.Values.First(x => x.ItemResult.Value.Name.ToDalamudString().ToString() == ingredient) : null;
         }
     }
 }

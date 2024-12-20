@@ -50,10 +50,9 @@ public unsafe class Artisan : IDalamudPlugin
 
         LuminaSheets.Init();
         P.Config = Configuration.Load();
-        P.Config.ScriptSolverConfig.Init();
+        //P.Config.ScriptSolverConfig.Init();
 
         TM = new();
-        TM.TimeLimitMS = 1000;
         CTM = new();
 #if !DEBUG
         TM.ShowDebug = false;
@@ -117,7 +116,7 @@ public unsafe class Artisan : IDalamudPlugin
 
     private void DisableEndurance(int type, int code)
     {
-        Endurance.Enable = false;
+        Endurance.ToggleEndurance(false);
         CraftingListUI.Processing = false;
     }
 
@@ -191,7 +190,7 @@ public unsafe class Artisan : IDalamudPlugin
     {
         if (!Svc.ClientState.IsLoggedIn)
         {
-            Endurance.Enable = false;
+            Endurance.ToggleEndurance(false);
             CraftingListUI.Processing = false;
             return;
         }
@@ -231,7 +230,7 @@ public unsafe class Artisan : IDalamudPlugin
         ws?.RemoveAllWindows();
         ws = null!;
 
-        Config.ScriptSolverConfig?.Dispose();
+        //Config.ScriptSolverConfig?.Dispose();
         EnduranceCraftWatcher.Dispose();
         PreCrafting.Dispose();
         CraftingProcessor.Dispose();
@@ -418,7 +417,7 @@ public unsafe class Artisan : IDalamudPlugin
         switch (IPC.IPC.CurrentMode)
         {
             case IPC.IPC.ArtisanMode.Endurance:
-                Endurance.Enable = false;
+                Endurance.ToggleEndurance(false);
                 break;
             case IPC.IPC.ArtisanMode.Lists:
                 CraftingListFunctions.Paused = true;
@@ -455,7 +454,7 @@ public unsafe class Artisan : IDalamudPlugin
         switch (IPC.IPC.CurrentMode)
         {
             case IPC.IPC.ArtisanMode.Endurance:
-                Endurance.Enable = true;
+                Endurance.ToggleEndurance(true);
                 break;
             case IPC.IPC.ArtisanMode.Lists:
                 CraftingListFunctions.Paused = false;
