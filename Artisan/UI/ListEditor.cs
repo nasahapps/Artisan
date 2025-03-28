@@ -625,6 +625,8 @@ internal class ListEditor : Window, IDisposable
             }
         }
     }
+
+    private Dictionary<uint, string> RecipeLabels = new Dictionary<uint, string>();
     private void DrawRecipeList()
     {
         if (P.Config.ShowOnlyCraftable && !RetainerInfo.CacheBuilt)
@@ -648,7 +650,11 @@ internal class ListEditor : Window, IDisposable
             foreach (var recipe in CraftingListUI.CraftableItems.Where(x => x.Value).Select(x => x.Key).Where(x => x.ItemResult.Value.Name.ToDalamudString().ToString().Contains(Search, StringComparison.CurrentCultureIgnoreCase)))
             {
                 ImGui.PushID((int)recipe.RowId);
-                var selected = ImGui.Selectable($"{recipe.ItemResult.Value.Name.ToDalamudString().ToString()} ({LuminaSheets.ClassJobSheet[recipe.CraftType.RowId + 8].Abbreviation.ToString()} {recipe.RecipeLevelTable.Value.ClassJobLevel})", recipe.RowId == SelectedRecipe?.RowId);
+                if (!RecipeLabels.ContainsKey(recipe.RowId))
+                {
+                    RecipeLabels[recipe.RowId] = $"{recipe.ItemResult.Value.Name.ToDalamudString()} ({LuminaSheets.ClassJobSheet[recipe.CraftType.RowId + 8].Abbreviation} {recipe.RecipeLevelTable.Value.ClassJobLevel})";
+                }
+                var selected = ImGui.Selectable(RecipeLabels[recipe.RowId], recipe.RowId == SelectedRecipe?.RowId);
 
                 if (selected)
                 {
@@ -662,14 +668,17 @@ internal class ListEditor : Window, IDisposable
         }
         else if (!P.Config.ShowOnlyCraftable)
         {
-            foreach (var recipe in CollectionsMarshal.AsSpan(LuminaSheets.RecipeSheet.Values.ToList()))
+            foreach (var recipe in LuminaSheets.RecipeSheet.Values)
             {
                 try
                 {
-                    if (string.IsNullOrEmpty(recipe.ItemResult.Value.Name.ToDalamudString().ToString())) continue;
-                    if (!recipe.ItemResult.Value.Name.ToDalamudString().ToString().Contains(Search, StringComparison.CurrentCultureIgnoreCase)) continue;
-                    rawIngredientsList.Clear();
-                    var selected = ImGui.Selectable($"{recipe.ItemResult.Value.Name.ToDalamudString().ToString()} ({LuminaSheets.ClassJobSheet[recipe.CraftType.RowId + 8].Abbreviation.ToString()} {recipe.RecipeLevelTable.Value.ClassJobLevel})", recipe.RowId == SelectedRecipe?.RowId);
+                    if (recipe.ItemResult.RowId == 0) continue;
+                    if (!string.IsNullOrEmpty(Search) && !recipe.ItemResult.Value.Name.ToDalamudString().ToString().Contains(Search, StringComparison.CurrentCultureIgnoreCase)) continue;
+                    if (!RecipeLabels.ContainsKey(recipe.RowId))
+                    {
+                        RecipeLabels[recipe.RowId] = $"{recipe.ItemResult.Value.Name.ToDalamudString()} ({LuminaSheets.ClassJobSheet[recipe.CraftType.RowId + 8].Abbreviation} {recipe.RecipeLevelTable.Value.ClassJobLevel})";
+                    }
+                    var selected = ImGui.Selectable(RecipeLabels[recipe.RowId], recipe.RowId == SelectedRecipe?.RowId);
 
                     if (selected)
                     {
@@ -1111,7 +1120,7 @@ internal class ListEditor : Window, IDisposable
             ImGui.SameLine();
             if (ImGui.Button("Apply To all###QuickSynthAll"))
             {
-                foreach (var r in SelectedList.Recipes)
+                foreach (var r in SelectedList.Recipes.Where(n => LuminaSheets.RecipeSheet[n.ID].CanQuickSynth))
                 {
                     if (r.ListItemOptions == null)
                     { r.ListItemOptions = new(); }
@@ -1132,16 +1141,17 @@ internal class ListEditor : Window, IDisposable
             ImGui.TextWrapped("This item cannot be quick synthed.");
         }
 
-        if (LuminaSheets.RecipeSheet.Values
-                .Where(x => x.ItemResult.Value.Name.ToDalamudString().ToString() == selectedListItem.NameOfRecipe()).Count() > 1)
+        // Retrieve the list of recipes matching the selected recipe name from the preprocessed lookup table.
+        var matchingRecipes = LuminaSheets.recipeLookup[selectedListItem.NameOfRecipe()].ToList();
+
+        if (matchingRecipes.Count > 1)
         {
             var pre = $"{LuminaSheets.ClassJobSheet[recipe.CraftType.RowId + 8].Abbreviation.ToString()}";
             ImGui.TextWrapped("Switch crafted job");
             ImGuiEx.SetNextItemFullWidth(-30);
             if (ImGui.BeginCombo("###SwitchJobCombo", pre))
             {
-                foreach (var altJob in LuminaSheets.RecipeSheet.Values.Where(
-                             x => x.ItemResult.Value.Name.ToDalamudString().ToString() == selectedListItem.NameOfRecipe()))
+                foreach (var altJob in matchingRecipes)
                 {
                     var altJ = $"{LuminaSheets.ClassJobSheet[altJob.CraftType.RowId + 8].Abbreviation.ToString()}";
                     if (ImGui.Selectable($"{altJ}"))

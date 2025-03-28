@@ -14,6 +14,8 @@ namespace Artisan.RawInformation
 
         public static Dictionary<uint, Recipe>? RecipeSheet;
 
+        public static ILookup<string, Recipe>? recipeLookup;
+
         public static Dictionary<uint, GatheringItem>? GatheringItemSheet;
 
         public static Dictionary<uint, SpearfishingItem>? SpearfishingItemSheet;
@@ -31,8 +33,6 @@ namespace Artisan.RawInformation
         public static Dictionary<uint, Status>? StatusSheet;
 
         public static Dictionary<uint, CraftAction>? CraftActions;
-
-        public static Dictionary<uint, CraftLevelDifference>? CraftLevelDifference;
 
         public static Dictionary<uint, RecipeLevelTable>? RecipeLevelTableSheet;
 
@@ -65,6 +65,10 @@ namespace Artisan.RawInformation
                 .ThenBy(x => x.ItemResult.Value.Name.ToDalamudString().ToString())
                 .ToDictionary(x => x.RowId, x => x);
 
+            // Preprocess the recipe data into a lookup table (ILookup) for faster access.
+            recipeLookup = LuminaSheets.RecipeSheet.Values
+                .ToLookup(x => x.ItemResult.Value.Name.ToDalamudString().ToString());
+
             GatheringItemSheet = Svc.Data?.GetExcelSheet<GatheringItem>()?
                 .Where(x => x.GatheringItemLevel.Value.GatheringItemLevel > 0)
                 .ToDictionary(i => i.RowId, i => i);
@@ -94,9 +98,6 @@ namespace Artisan.RawInformation
                        .ToDictionary(i => i.RowId, i => i);
 
             CraftActions = Svc.Data?.GetExcelSheet<CraftAction>()?
-                       .ToDictionary(i => i.RowId, i => i);
-
-            CraftLevelDifference = Svc.Data?.GetExcelSheet<CraftLevelDifference>()?
                        .ToDictionary(i => i.RowId, i => i);
 
             RecipeLevelTableSheet = Svc.Data?.GetExcelSheet<RecipeLevelTable>()?
@@ -171,7 +172,7 @@ namespace Artisan.RawInformation
         public static string GetSkillDescription(this Skills skill)
         {
             var id = skill.ActionId(ECommons.ExcelServices.Job.CRP);
-            string description = id == 0 ? "" : id < 100000 ? Svc.Data.Excel.GetSheet<ActionTransient>().GetRow(id).Description.ToString() : LuminaSheets.CraftActions[id].Description.ToString();
+            string description = id == 0 ? "" : id < 100000 ? Svc.Data.Excel.GetSheet<ActionTransient>().GetRow(id).Description.ToDalamudString().ToString() : LuminaSheets.CraftActions[id].Description.ToDalamudString().ToString();
             description = skill switch
             {
                 Skills.BasicSynthesis => description.Replace($": %", $": 100%/120%").Replace($"効率：", $"効率：100/120").Replace($"Effizienz: ", $"Effizienz: 100/120"),
