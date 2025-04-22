@@ -30,6 +30,7 @@ using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -88,6 +89,8 @@ internal class ListEditor : Window, IDisposable
     NewCraftingList? copyList;
 
     IngredientHelpers IngredientHelper = new();
+
+    private bool hqSim = false;
 
     public ListEditor(int listId)
         : base($"List Editor###{listId}")
@@ -235,6 +238,9 @@ internal class ListEditor : Window, IDisposable
 
             if (RetainerInfo.AToolsInstalled && !RetainerInfo.AToolsEnabled)
                 ImGuiEx.Text(ImGuiColors.DalamudYellow, $"Please enable Allagan Tools for retainer features.");
+
+            if (RetainerInfo.AToolsEnabled)
+                ImGuiEx.Text(ImGuiColors.DalamudYellow, $"You have turned off Allagan Tools integration.");
         }
 
         if (ImGui.BeginTabBar("CraftingListEditor", ImGuiTabBarFlags.None))
@@ -640,7 +646,7 @@ internal class ListEditor : Window, IDisposable
 
         ImGui.Text("Search");
         ImGui.SameLine();
-        ImGui.InputText("###RecipeSearch", ref Search, 100);
+        ImGui.InputText("###RecipeSearch", ref Search, 150);
         if (ImGui.Selectable(string.Empty, SelectedRecipe == null))
         {
             SelectedRecipe = null;
@@ -648,7 +654,7 @@ internal class ListEditor : Window, IDisposable
 
         if (P.Config.ShowOnlyCraftable && RetainerInfo.CacheBuilt)
         {
-            foreach (var recipe in CraftingListUI.CraftableItems.Where(x => x.Value).Select(x => x.Key).Where(x => x.ItemResult.Value.Name.ToDalamudString().ToString().Contains(Search, StringComparison.CurrentCultureIgnoreCase)))
+            foreach (var recipe in CraftingListUI.CraftableItems.Where(x => x.Value).Select(x => x.Key).Where(x => Regex.Match(x.ItemResult.Value.Name.GetText(true), Search, RegexOptions.CultureInvariant | RegexOptions.IgnoreCase).Success))
             {
                 ImGui.PushID((int)recipe.RowId);
                 if (!RecipeLabels.ContainsKey(recipe.RowId))
@@ -674,7 +680,7 @@ internal class ListEditor : Window, IDisposable
                 try
                 {
                     if (recipe.ItemResult.RowId == 0) continue;
-                    if (!string.IsNullOrEmpty(Search) && !recipe.ItemResult.Value.Name.ToDalamudString().ToString().Contains(Search, StringComparison.CurrentCultureIgnoreCase)) continue;
+                    if (!string.IsNullOrEmpty(Search) && !Regex.Match(recipe.ItemResult.Value.Name.GetText(true), Search, RegexOptions.CultureInvariant | RegexOptions.IgnoreCase).Success) continue;
                     if (!RecipeLabels.ContainsKey(recipe.RowId))
                     {
                         RecipeLabels[recipe.RowId] = $"{recipe.ItemResult.Value.Name.ToDalamudString()} ({LuminaSheets.ClassJobSheet[recipe.CraftType.RowId + 8].Abbreviation} {recipe.RecipeLevelTable.Value.ClassJobLevel})";
@@ -1283,7 +1289,9 @@ internal class ListEditor : Window, IDisposable
             P.Config.Save();
         }
 
-        var solverHint = Simulator.SimulatorResult(recipe, config, craft, out var hintColor);
+        ImGui.Checkbox($"Assume Max Starting Quality (for simulator)", ref hqSim);
+
+        var solverHint = Simulator.SimulatorResult(recipe, config, craft, out var hintColor, hqSim);
         if (!recipe.IsExpert)
             ImGuiEx.TextWrapped(hintColor, solverHint);
         else
