@@ -58,7 +58,8 @@ public static class Simulator
             HeartAndSoulAvailable = craft.Specialist,
             QuickInnoLeft = craft.Specialist ? 1 : 0,
             TrainedPerfectionAvailable = craft.StatLevel >= MinLevel(Skills.TrainedPerfection),
-            Condition = Condition.Normal
+            Condition = Condition.Normal,
+            MaterialMiracleCharges = (uint)(craft.MissionHasMaterialMiracle ? 1 : 0),
         };
 
     public static CraftStatus Status(CraftState craft, StepState step)
@@ -106,10 +107,7 @@ public static class Simulator
         hintColor = ImGuiColors.DalamudWhite;
         var solver = CraftingProcessor.GetSolverForRecipe(config, craft).CreateSolver(craft);
         if (solver == null) return "No valid solver found.";
-        var rd = RecipeNoteRecipeData.Ptr();
-        var re = rd != null ? rd->FindRecipeById(recipe.RowId) : null;
-        var shqf = (float)recipe.MaterialQualityFactor / 100;
-        var startingQuality = assumeMaxStartingQuality ? (int)(Calculations.RecipeMaxQuality(recipe) * shqf) : re != null ? Calculations.GetStartingQuality(recipe, re->GetAssignedHQIngredients()) : 0;
+        var startingQuality = GetStartingQuality(recipe, assumeMaxStartingQuality);
         var time = SolverUtils.EstimateCraftTime(solver, craft, startingQuality);
         var result = SolverUtils.SimulateSolverExecution(solver, craft, startingQuality);
         var status = result != null ? Status(craft, result) : CraftStatus.InProgress;
@@ -119,7 +117,7 @@ public static class Simulator
         {
             CraftStatus.InProgress => "Craft did not finish (solver failed to return any more steps before finishing).",
             CraftStatus.FailedDurability => $"Craft failed due to durability shortage. (P: {(float)result.Progress / craft.CraftProgress * 100:f0}%, Q: {(float)result.Quality / craft.CraftQualityMax * 100:f0}%)",
-            CraftStatus.FailedMinQuality => "Craft completed but didn't meet minimum quality.",
+            CraftStatus.FailedMinQuality => $"Craft completed but didn't meet minimum quality(P: {(float)result.Progress / craft.CraftProgress * 100:f0}%, Q: {(float)result.Quality / craft.CraftQualityMax * 100:f0}%).",
             CraftStatus.SucceededQ1 => $"Craft completed and managed to hit 1st quality threshold in {time.TotalSeconds:f0}s.",
             CraftStatus.SucceededQ2 => $"Craft completed and managed to hit 2nd quality threshold in {time.TotalSeconds:f0}s.",
             CraftStatus.SucceededQ3 => $"Craft completed and managed to hit 3rd quality threshold in {time.TotalSeconds:f0}s!",
@@ -147,6 +145,15 @@ public static class Simulator
         };
 
         return solverHint;
+    }
+
+    public unsafe static int GetStartingQuality(Recipe recipe, bool assumeMaxStartingQuality)
+    {
+        var rd = RecipeNoteRecipeData.Ptr();
+        var re = rd != null ? rd->FindRecipeById(recipe.RowId) : null;
+        var shqf = (float)recipe.MaterialQualityFactor / 100;
+        var startingQuality = assumeMaxStartingQuality ? (int)(Calculations.RecipeMaxQuality(recipe) * shqf) : re != null ? Calculations.GetStartingQuality(recipe, re->GetAssignedHQIngredients()) : 0;
+        return startingQuality;
     }
 
     public static (ExecuteResult, StepState) Execute(CraftState craft, StepState step, Skills action, float actionSuccessRoll, float nextStateRoll)
@@ -201,6 +208,8 @@ public static class Simulator
         next.PrevComboAction = action; // note: even stuff like final appraisal and h&s break combos
         next.TrainedPerfectionActive = action == Skills.TrainedPerfection || (step.TrainedPerfectionActive && !HasDurabilityCost(action));
         next.TrainedPerfectionAvailable = step.TrainedPerfectionAvailable && action != Skills.TrainedPerfection;
+        next.MaterialMiracleCharges = action == Skills.MaterialMiracle ? step.MaterialMiracleCharges - 1 : step.MaterialMiracleCharges;
+        next.MaterialMiracleActive = step.MaterialMiracleActive; //This is a timed buff, can't really use this in the simulator, just copy the real result
 
         if (step.FinalAppraisalLeft > 0 && next.Progress >= craft.CraftProgress)
             next.Progress = craft.CraftProgress - 1;
@@ -275,10 +284,11 @@ public static class Simulator
         Skills.TrainedPerfection => step.TrainedPerfectionAvailable,
         Skills.DaringTouch => step.ExpedienceLeft > 0,
         Skills.QuickInnovation => step.QuickInnoLeft > 0 && step.InnovationLeft == 0,
+        Skills.MaterialMiracle => step.MaterialMiracleCharges > 0 && !step.MaterialMiracleActive,
         _ => true
     } && craft.StatLevel >= MinLevel(action) && step.RemainingCP >= GetCPCost(step, action);
 
-    public static bool SkipUpdates(Skills action) => action is Skills.CarefulObservation or Skills.FinalAppraisal or Skills.HeartAndSoul;
+    public static bool SkipUpdates(Skills action) => action is Skills.CarefulObservation or Skills.FinalAppraisal or Skills.HeartAndSoul or Skills.MaterialMiracle;
     public static bool ConsumeHeartAndSoul(Skills action) => action is Skills.IntensiveSynthesis or Skills.PreciseTouch or Skills.TricksOfTrade;
 
     public static double GetSuccessRate(StepState step, Skills action)
@@ -423,6 +433,12 @@ public static class Simulator
     {
         if (step.PrevComboAction == Skills.BasicTouch && craft.StatLevel >= MinLevel(Skills.StandardTouch)) return Skills.StandardTouch;
         if (step.PrevComboAction == Skills.StandardTouch && craft.StatLevel >= MinLevel(Skills.AdvancedTouch)) return Skills.AdvancedTouch;
+        return Skills.BasicTouch;
+    }
+
+    internal static Skills NextTouchComboRefined(StepState step, CraftState craft)
+    {
+        if (step.PrevComboAction == Skills.BasicTouch && craft.StatLevel >= MinLevel(Skills.RefinedTouch)) return Skills.RefinedTouch;
         return Skills.BasicTouch;
     }
 

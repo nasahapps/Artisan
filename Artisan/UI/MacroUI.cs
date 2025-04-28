@@ -370,11 +370,22 @@ namespace Artisan.UI
         {
             Skills previousAction = Skills.None;
             int output = 0;
+            int tcr = 0;
             foreach (var step in m.Steps)
             {
                 if (step.Action == Skills.TouchCombo)
                 {
                     output += 18;
+                }
+                if (step.Action == Skills.TouchComboRefined)
+                {
+                    if (tcr % 2 == 1)
+                        output += 18;
+                    else
+                        output += 24;
+
+                    tcr++;
+
                 }
                 output += Simulator.GetBaseCPCost(step.Action, previousAction);
                 previousAction = step.Action;
@@ -447,7 +458,7 @@ namespace Artisan.UI
                         case MacroNameUse.FromClipboard:
                             try
                             {
-                                var steps = ParseMacro(ImGui.GetClipboardText());
+                                var steps = ParseMacro(ImGui.GetClipboardText(), false);
                                 if (steps.Count > 0)
                                 {
                                     var macro = new MacroSolverSettings.Macro();
@@ -478,7 +489,7 @@ namespace Artisan.UI
             }
         }
 
-        public static List<MacroSolverSettings.MacroStep> ParseMacro(string text)
+        public static List<MacroSolverSettings.MacroStep> ParseMacro(string text, bool raphParseEN = false)
         {
             var res = new List<MacroSolverSettings.MacroStep>();
             if (string.IsNullOrWhiteSpace(text))
@@ -517,11 +528,15 @@ namespace Artisan.UI
                         continue;
                     }
 
-                    var act = Enum.GetValues(typeof(Skills)).Cast<Skills>().FirstOrDefault(s => s.NameOfAction().Equals(action, StringComparison.CurrentCultureIgnoreCase));
+                    var act = Enum.GetValues(typeof(Skills)).Cast<Skills>().FirstOrDefault(s => s.NameOfAction(raphParseEN).Equals(action, StringComparison.CurrentCultureIgnoreCase));
                     if (act == default)
                     {
-                        DuoLog.Error($"Unable to parse action: {action}");
-                        continue;
+                        act = Enum.GetValues(typeof(Skills)).Cast<Skills>().FirstOrDefault(s => s.NameOfAction(raphParseEN).Replace(" ", "").Replace("'", "").Equals(action, StringComparison.CurrentCultureIgnoreCase));
+                        if (act == default)
+                        {
+                            DuoLog.Error($"Unable to parse action: {action}");
+                            continue;
+                        }
                     }
                     res.Add(new() { Action = act });
                 }

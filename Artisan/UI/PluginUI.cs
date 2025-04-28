@@ -12,9 +12,11 @@ using ECommons;
 using ECommons.DalamudServices;
 using ECommons.ImGuiMethods;
 using ImGuiNET;
+using Lumina.Excel.Sheets;
 using PunishLib.ImGuiMethods;
 using System;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 using ThreadLoadImageHandler = ECommons.ImGuiMethods.ThreadLoadImageHandler;
 
@@ -161,6 +163,11 @@ namespace Artisan.UI
                             OpenWindow = OpenWindow.Macro;
                         }
                         ImGui.Spacing();
+                        if (ImGui.Selectable("Raphael Cache", OpenWindow == OpenWindow.RaphaelCache))
+                        {
+                            OpenWindow = OpenWindow.RaphaelCache;
+                        }
+                        ImGui.Spacing();
                         if (ImGui.Selectable("Crafting Lists", OpenWindow == OpenWindow.Lists))
                         {
                             OpenWindow = OpenWindow.Lists;
@@ -221,6 +228,9 @@ namespace Artisan.UI
                                 break;
                             case OpenWindow.Macro:
                                 MacroUI.Draw();
+                                break;
+                            case OpenWindow.RaphaelCache:
+                                RaphaelCacheUI.Draw();
                                 break;
                             case OpenWindow.FCWorkshop:
                                 FCWorkshopUI.Draw();
@@ -582,6 +592,16 @@ namespace Artisan.UI
                     if (ImGui.SliderFloat("Sound Volume", ref P.Config.SoundVolume, 0f, 1f, "%.2f"))
                         P.Config.Save();
                 }
+
+                if (ImGuiEx.ButtonCtrl("Reset Cosmic Exploration Crafting Configs"))
+                {
+                    var copy = P.Config.RecipeConfigs;
+                    foreach (var c in copy)
+                    {
+                        if (Svc.Data.GetExcelSheet<Recipe>().GetRow(c.Key).Number == 0)
+                            P.Config.RecipeConfigs.Remove(c.Key);
+                    }
+                }
             }
             if (ImGui.CollapsingHeader("Macro Settings"))
             {
@@ -655,6 +675,10 @@ namespace Artisan.UI
                 if (ImGui.SliderInt($"###MaxIQStacksPrepTouch", ref P.Config.MaxIQPrepTouch, 0, 10))
                     P.Config.Save();
 
+                if (ImGui.Checkbox($"Use Material Miracle when available", ref P.Config.UseMaterialMiracle))
+                    P.Config.Save();
+
+                ImGuiComponents.HelpMarker($"This will switch the Standard Recipe Solver over to the Expert Solver for the duration of the buff. This will not give you proper simulator results as it's a timed buff, not a permanent one with stacks, so we can't really simulate it properly.");
 
             }
             bool openExpert = false;
@@ -676,6 +700,12 @@ namespace Artisan.UI
                     ImGui.SameLine();
                     ImGui.Image(P.Config.ExpertSolverConfig.expertIcon.ImGuiHandle, new(P.Config.ExpertSolverConfig.expertIcon.Width * ImGuiHelpers.GlobalScaleSafe, ImGui.GetItemRectSize().Y), new(0, 0), new(1, 1), new(0.94f, 0.57f, 0f, 1f));
                 }
+            }
+
+            if (ImGui.CollapsingHeader("Raphael Solver Settings"))
+            {
+                if (P.Config.RaphaelSolverConfig.Draw())
+                    P.Config.Save();
             }
 
             using (ImRaii.Disabled())
@@ -953,5 +983,6 @@ namespace Artisan.UI
         SpecialList = 8,
         Overview = 9,
         Simulator = 10,
+        RaphaelCache = 11,
     }
 }

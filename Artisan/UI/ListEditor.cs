@@ -13,7 +13,9 @@ using ECommons.ImGuiMethods;
 using ECommons.Reflection;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using global::Artisan.CraftingLogic;
+using global::Artisan.CraftingLogic.Solvers;
 using global::Artisan.GameInterop;
+using global::Artisan.RawInformation.Character;
 using global::Artisan.UI.Tables;
 using ImGuiNET;
 using IPC;
@@ -28,7 +30,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -656,6 +657,7 @@ internal class ListEditor : Window, IDisposable
         {
             foreach (var recipe in CraftingListUI.CraftableItems.Where(x => x.Value).Select(x => x.Key).Where(x => Regex.Match(x.ItemResult.Value.Name.GetText(true), Search, RegexOptions.CultureInvariant | RegexOptions.IgnoreCase).Success))
             {
+                if (recipe.Number == 0) continue;
                 ImGui.PushID((int)recipe.RowId);
                 if (!RecipeLabels.ContainsKey(recipe.RowId))
                 {
@@ -680,6 +682,7 @@ internal class ListEditor : Window, IDisposable
                 try
                 {
                     if (recipe.ItemResult.RowId == 0) continue;
+                    if (recipe.Number == 0) continue;
                     if (!string.IsNullOrEmpty(Search) && !Regex.Match(recipe.ItemResult.Value.Name.GetText(true), Search, RegexOptions.CultureInvariant | RegexOptions.IgnoreCase).Success) continue;
                     if (!RecipeLabels.ContainsKey(recipe.RowId))
                     {
@@ -1281,13 +1284,21 @@ internal class ListEditor : Window, IDisposable
         }
 
         var stats = CharacterStats.GetBaseStatsForClassHeuristic(Job.CRP + recipe.CraftType.RowId);
-        stats.AddConsumables(new(config.RequiredFood, config.RequiredFoodHQ), new(config.RequiredPotion, config.RequiredPotionHQ));
+        stats.AddConsumables(new(config.RequiredFood, config.RequiredFoodHQ), new(config.RequiredPotion, config.RequiredPotionHQ), CharacterInfo.FCCraftsmanshipbuff);
         var craft = Crafting.BuildCraftStateForRecipe(stats, Job.CRP + recipe.CraftType.RowId, recipe);
         if (config.DrawSolver(craft))
         {
             P.Config.RecipeConfigs[selectedListItem] = config;
             P.Config.Save();
+            config.TempConfigs.Clear();
         }
+        
+        ImGuiEx.TextV("Requirements:");
+        ImGui.SameLine();
+        using var style = ImRaii.PushStyle(ImGuiStyleVar.ItemSpacing, new Vector2(0, ImGui.GetStyle().ItemSpacing.Y));
+        ImGui.SameLine(137.6f.Scale());
+        ImGui.TextWrapped($"Difficulty: {craft.CraftProgress} | Durability: {craft.CraftDurability} | Quality: {(craft.CraftCollectible ? craft.CraftQualityMin3 : craft.CraftQualityMax)}");
+        ImGuiComponents.HelpMarker($"Shows the crafting requirements: Progress needed to complete the craft, how much Durability the recipe has, and Quality target required to reach the highest Quality level (In case of a Collectible). Use this information to select an appropriate macro, if desired.");
 
         ImGui.Checkbox($"Assume Max Starting Quality (for simulator)", ref hqSim);
 
@@ -1358,6 +1369,7 @@ internal class RecipeSelector : ItemSelector<ListItem>
             if (LuminaSheets.RecipeSheet.Values.Any(x => x.ItemResult.RowId == id))
             {
                 var recipe = LuminaSheets.RecipeSheet.Values.First(x => x.ItemResult.RowId == id);
+                if (recipe.Number == 0) return false;
                 if (List.Recipes.Any(x => x.ID == recipe.RowId))
                 {
                     List.Recipes.First(x => x.ID == recipe.RowId).Quantity += 1;
@@ -1376,6 +1388,7 @@ internal class RecipeSelector : ItemSelector<ListItem>
                     x => x.ItemResult.Value.Name.ToDalamudString().ToString().Equals(name, StringComparison.CurrentCultureIgnoreCase),
                     out var recipe))
             {
+                if (recipe.Number == 0) return false;
                 if (List.Recipes.Any(x => x.ID == recipe.RowId))
                 {
                     List.Recipes.First(x => x.ID == recipe.RowId).Quantity += 1;

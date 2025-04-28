@@ -14,11 +14,15 @@ using ECommons.ExcelServices;
 using ECommons.GameHelpers;
 using ECommons.ImGuiMethods;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.Game.Event;
+using FFXIVClientStructs.FFXIV.Client.Game.InstanceContent;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
+using FFXIVClientStructs.FFXIV.Client.Game.WKS;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
+using Lumina;
 using Lumina.Excel.Sheets;
 using System;
 using System.Linq;
@@ -161,6 +165,8 @@ namespace Artisan.UI
                     ImGui.Text($"Current Rec: {CraftingProcessor.NextRec.Action.NameOfAction()}");
                     ImGui.Text($"Previous Action: {Crafting.CurStep.PrevComboAction.NameOfAction()}");
                     ImGui.Text($"Can insta delicate: {Crafting.CurStep.Index == 1 && StandardSolver.CanFinishCraft(Crafting.CurCraft, Crafting.CurStep, Skills.DelicateSynthesis) && StandardSolver.CalculateNewQuality(Crafting.CurCraft, Crafting.CurStep, Skills.DelicateSynthesis) >= Crafting.CurCraft.CraftQualityMin3}");
+                    ImGui.Text($"Flags: {Crafting.CurCraft.ConditionFlags}");
+                    ImGui.Text($"Material Miracle Charges: {Crafting.CurStep.MaterialMiracleCharges}");
                 }
 
                 if (ImGui.CollapsingHeader("Spiritbonds"))
@@ -270,7 +276,7 @@ namespace Artisan.UI
 
                 if (ImGui.CollapsingHeader("Gear"))
                 {
-                    ImGui.TextUnformatted($"In-game stats: {CharacterInfo.Craftsmanship}/{CharacterInfo.Control}/{CharacterInfo.MaxCP}");
+                    ImGui.TextUnformatted($"In-game stats: {CharacterInfo.Craftsmanship}/{CharacterInfo.Control}/{CharacterInfo.MaxCP}/{CharacterInfo.FCCraftsmanshipbuff}");
                     DrawEquippedGear();
                     foreach (ref var gs in RaptureGearsetModule.Instance()->Entries)
                         DrawGearset(ref gs);
@@ -308,7 +314,7 @@ namespace Artisan.UI
                 ImGui.InputInt("Debug Value", ref DebugValue);
                 if (ImGui.Button($"Open Recipe"))
                 {
-                    AgentRecipeNote.Instance()->OpenRecipeByRecipeId((uint)DebugValue);
+                    PreCrafting.TaskSelectRecipe(Svc.Data.GetExcelSheet<Recipe>().GetRow((uint)DebugValue));
                 }
 
                 ImGui.Text($"Item Count? {CraftingListUI.NumberOfIngredient((uint)DebugValue)}");
@@ -395,7 +401,6 @@ namespace Artisan.UI
 
         private static void DrawRecipeEntry(string tag, RecipeNoteRecipeEntry* e)
         {
-            Svc.Log.Debug($"{e->RecipeId}");
             var recipe = Svc.Data.GetExcelSheet<Recipe>()?.GetRow(e->RecipeId);
             using var n = ImRaii.TreeNode($"{tag}: {e->RecipeId} '{recipe?.ItemResult.Value.Name.ToDalamudString()}'###{tag}");
             if (!n)
@@ -438,7 +443,7 @@ namespace Artisan.UI
                 using var n2 = ImRaii.TreeNode($"Starting quality: {startingQuality}/{Calculations.RecipeMaxQuality(recipe.Value)}", ImGuiTreeNodeFlags.Leaf);
             }
 
-            Util.ShowObject(recipe);
+            Util.ShowObject(recipe.Value.RecipeLevelTable.Value);
         }
 
         private static void DrawEquippedGear()
