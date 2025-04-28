@@ -8,11 +8,7 @@ using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Hooking;
 using ECommons.DalamudServices;
 using ECommons.ExcelServices;
-<<<<<<< HEAD
-using FFXIVClientStructs;
-=======
 using FFXIVClientStructs.FFXIV.Client.Game;
->>>>>>> 4eefe90522722fc89f3b0eb55776520818ab5e60
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel.Sheets;
