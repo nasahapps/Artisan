@@ -1,5 +1,6 @@
 ﻿using Artisan.Autocraft;
 using Artisan.CraftingLists;
+using Artisan.GameInterop;
 using Artisan.RawInformation;
 using Dalamud.Game.ClientState.Conditions;
 using ECommons.DalamudServices;
@@ -109,10 +110,8 @@ namespace Artisan.IPC
         {
             if (LuminaSheets.RecipeSheet!.FindFirst(x => x.Value.RowId == recipeId, out var recipe))
             {
-                P.TM.Enqueue(() =>
-                {
-                    CraftingListFunctions.OpenRecipeByID(recipeId);
-                });
+                PreCrafting.Tasks.Add((() => PreCrafting.TaskSelectRecipe(recipe.Value), TimeSpan.FromMilliseconds(500)));
+                P.TM.Enqueue(() => PreCrafting.Tasks.Count == 0);
                 P.TM.DelayNext(100);
                 P.TM.Enqueue(() =>
                 {
@@ -131,7 +130,7 @@ namespace Artisan.IPC
 
         public static bool IsBusy()
         {
-            return P.TM.NumQueuedTasks > 0 || P.CTM.NumQueuedTasks > 0 || Svc.Condition[ConditionFlag.PreparingToCraft] || Svc.Condition[ConditionFlag.Crafting] || Svc.Condition[ConditionFlag.MeldingMateria];
+            return Endurance.Enable || CraftingListUI.Processing || P.TM.NumQueuedTasks > 0 || P.CTM.NumQueuedTasks > 0 || !(Crafting.CurState is Crafting.State.IdleBetween or Crafting.State.IdleNormal);
         }
 
         public enum ArtisanMode

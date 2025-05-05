@@ -1,5 +1,6 @@
 ﻿using Artisan.Autocraft;
 using Artisan.CraftingLists;
+using Artisan.CraftingLogic;
 using Artisan.FCWorkshops;
 using Artisan.RawInformation;
 using Artisan.RawInformation.Character;
@@ -168,6 +169,11 @@ namespace Artisan.UI
                             OpenWindow = OpenWindow.RaphaelCache;
                         }
                         ImGui.Spacing();
+                        if (ImGui.Selectable("Recipe Assigner", OpenWindow == OpenWindow.Assigner))
+                        {
+                            OpenWindow = OpenWindow.Assigner;
+                        }
+                        ImGui.Spacing();
                         if (ImGui.Selectable("Crafting Lists", OpenWindow == OpenWindow.Lists))
                         {
                             OpenWindow = OpenWindow.Lists;
@@ -231,6 +237,9 @@ namespace Artisan.UI
                                 break;
                             case OpenWindow.RaphaelCache:
                                 RaphaelCacheUI.Draw();
+                                break;
+                            case OpenWindow.Assigner:
+                                AssignerUI.Draw();
                                 break;
                             case OpenWindow.FCWorkshop:
                                 FCWorkshopUI.Draw();
@@ -533,6 +542,22 @@ namespace Artisan.UI
                 {
                     P.Config.Save();
                 }
+
+                ImGui.Indent();
+                if (ImGui.CollapsingHeader("Default Consumables"))
+                {
+                    bool changed = false;
+                    changed |= P.Config.DefaultConsumables.DrawFood();
+                    changed |= P.Config.DefaultConsumables.DrawPotion();
+                    changed |= P.Config.DefaultConsumables.DrawManual();
+                    changed |= P.Config.DefaultConsumables.DrawSquadronManual();
+
+                    if (changed)
+                    {
+                        P.Config.Save();
+                    }
+                }
+                ImGui.Unindent();
 
                 if (ImGui.Checkbox($"Prioritize NPC repairs above self-repairs", ref P.Config.PrioritizeRepairNPC))
                 {
@@ -993,5 +1018,6 @@ namespace Artisan.UI
         Overview = 9,
         Simulator = 10,
         RaphaelCache = 11,
+        Assigner = 12,
     }
 }
