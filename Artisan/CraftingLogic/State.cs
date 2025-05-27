@@ -39,6 +39,7 @@ public record class CraftState
     public bool IsCosmic;
     public ConditionFlags ConditionFlags;
     public bool MissionHasMaterialMiracle;
+    public int InitialQuality;
 
     public uint ItemId;
     public uint RecipeId;
@@ -80,6 +81,7 @@ public record class StepState
     public Skills PrevComboAction;
     public uint MaterialMiracleCharges;
     public bool MaterialMiracleActive;
+    public int ObserveCounter;
 
     public override string ToString() => $"#{Index} {Condition}: {Progress}/{Quality}/{Durability}/{RemainingCP}; {BuffsString()}; Prev={PrevComboAction}{(PrevActionFailed ? " (failed)" : "")}";
 
